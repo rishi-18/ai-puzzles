@@ -4,40 +4,58 @@ import copy
 
 # a* algorithm for maze
 
-def a_star_search(maze, start, goal):
-    rows, cols = len(maze), len(maze[0])
-    open_set = [(0, start)]
+def a_star_search(grid, start, goal):
+    rows, cols = len(grid), len(grid[0])
+    
+    def heuristic(a, b):
+        # Manhattan distance
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    open_set = []
+    heapq.heappush(open_set, (0 + heuristic(start, goal), 0, start))
+    
     came_from = {}
     g_score = {start: 0}
 
-    def heuristic(a, b):
-        return abs(a[0] - b[0]) + abs(a[1] - b[1])  # Manhattan distance
-
     while open_set:
-        _, current = heapq.heappop(open_set)
+        _, current_cost, current = heapq.heappop(open_set)
 
         if current == goal:
+            # Reconstruct path
             path = []
             while current in came_from:
                 path.append(current)
                 current = came_from[current]
             path.append(start)
-            path.reverse()
-            return path
+            return path[::-1]
 
-        x, y = current
-        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
-            nx, ny = x + dx, y + dy
-            neighbor = (nx, ny)
-            if 0 <= nx < rows and 0 <= ny < cols and maze[nx][ny] == 0:
-                tentative_g = g_score[current] + 1
-                if neighbor not in g_score or tentative_g < g_score[neighbor]:
-                    came_from[neighbor] = current
-                    g_score[neighbor] = tentative_g
-                    f = tentative_g + heuristic(neighbor, goal)
-                    heapq.heappush(open_set, (f, neighbor))
+        neighbors = get_neighbors(current, rows, cols)
+        for neighbor in neighbors:
+            x, y = neighbor
+            if grid[x][y] == 1:
+                continue  # wall
 
-    return None
+            tentative_g = g_score[current] + 1
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f = tentative_g + heuristic(neighbor, goal)
+                heapq.heappush(open_set, (f, tentative_g, neighbor))
+
+    return None  # No path found
+
+def get_neighbors(pos, rows, cols):
+    x, y = pos
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    neighbors = []
+
+    for dx, dy in directions:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < rows and 0 <= ny < cols:
+            neighbors.append((nx, ny))
+    
+    return neighbors
+
 
 
 # logic for traffic puzzle solver
