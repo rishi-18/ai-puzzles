@@ -1,59 +1,88 @@
-# games/code_breaker.py
-
 import tkinter as tk
-from tkinter import messagebox
 import random
-from itertools import permutations
 
-class CodeBreakerGame:
+class CodeBreakerManualFeedback:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI Code Breaker")
-        self.secret_code = None
-        self.possible_codes = [''.join(p) for p in permutations('0123456789', 4)]
+        self.root.title("Code Breaker - Manual Feedback Mode")
+        self.code_length = 4
+        self.max_attempts = 10
+        self.guess_count = 0
+        self.possible_digits = [str(i) for i in range(10)]
+        self.past_guesses = []
 
-        self.create_widgets()
+        self.current_guess = self.generate_guess()
 
-    def create_widgets(self):
-        tk.Label(self.root, text="Enter your 4-digit secret code (unique digits):").pack(pady=5)
-        self.entry = tk.Entry(self.root)
-        self.entry.pack()
+        self.setup_ui()
+        self.display_guess()
 
-        tk.Button(self.root, text="Start Game", command=self.start_game).pack(pady=10)
+    def setup_ui(self):
+        self.title = tk.Label(self.root, text="Manual Feedback Mode", font=("Segoe UI", 14, "bold"))
+        self.title.pack(pady=5)
 
-        self.output = tk.Text(self.root, height=15, width=50)
-        self.output.pack()
+        self.guess_display = tk.Label(self.root, text="", font=("Consolas", 14))
+        self.guess_display.pack(pady=5)
 
-    def start_game(self):
-        code = self.entry.get()
-        if not code.isdigit() or len(code) != 4 or len(set(code)) != 4:
-            messagebox.showerror("Invalid", "Enter 4 unique digits!")
+        self.correct_pos_label = tk.Label(self.root, text="Correct Positions:")
+        self.correct_pos_label.pack()
+        self.correct_pos_entry = tk.Entry(self.root)
+        self.correct_pos_entry.pack(pady=2)
+
+        self.correct_digits_label = tk.Label(self.root, text="Correct Digits (Total):")
+        self.correct_digits_label.pack()
+        self.correct_digits_entry = tk.Entry(self.root)
+        self.correct_digits_entry.pack(pady=2)
+
+        self.submit_button = tk.Button(self.root, text="Submit Feedback", command=self.submit_feedback)
+        self.submit_button.pack(pady=10)
+
+        self.output_box = tk.Text(self.root, height=10, width=50, font=("Consolas", 11))
+        self.output_box.pack(pady=10)
+        self.output_box.configure(state="disabled")
+
+    def display_guess(self):
+        self.guess_display.config(text=f"AI Guess #{self.guess_count + 1}: {self.current_guess}")
+
+    def generate_guess(self):
+        while True:
+            guess = ''.join(random.sample(self.possible_digits, self.code_length))
+            if guess not in [g[0] for g in self.past_guesses]:
+                return guess
+
+    def output_message(self, message):
+        self.output_box.configure(state="normal")
+        self.output_box.insert(tk.END, message + "\n")
+        self.output_box.configure(state="disabled")
+        self.output_box.see(tk.END)
+
+    def submit_feedback(self):
+        try:
+            correct_pos = int(self.correct_pos_entry.get())
+            correct_digits = int(self.correct_digits_entry.get())
+        except ValueError:
+            self.output_message("❌ Please enter valid numbers.")
             return
-        self.secret_code = code
-        self.output.insert(tk.END, f"Secret code is set. AI will now guess...\n")
-        self.run_ai()
 
-    def feedback(self, guess):
-        correct_place = sum(guess[i] == self.secret_code[i] for i in range(4))
-        correct_digit = sum(min(guess.count(d), self.secret_code.count(d)) for d in set(guess)) - correct_place
-        return correct_place, correct_digit
+        if correct_pos == self.code_length:
+            self.output_message(f"✅ AI guessed the code '{self.current_guess}' correctly in {self.guess_count + 1} attempts!")
+            self.submit_button.config(state="disabled")
+            return
 
-    def run_ai(self):
-        attempts = 0
-        while self.possible_codes:
-            guess = random.choice(self.possible_codes)
-            attempts += 1
-            correct_place, correct_digit = self.feedback(guess)
+        self.past_guesses.append((self.current_guess, correct_pos, correct_digits))
+        self.guess_count += 1
 
-            self.output.insert(tk.END, f"AI Guess {attempts}: {guess} → ✅: {correct_place}, ⚠️: {correct_digit}\n")
-            self.output.see(tk.END)
+        if self.guess_count >= self.max_attempts:
+            self.output_message("❌ AI failed to guess the code in 10 attempts.")
+            self.submit_button.config(state="disabled")
+            return
 
-            if guess == self.secret_code:
-                self.output.insert(tk.END, f"\nAI cracked the code in {attempts} attempts!\n")
-                break
+        self.correct_pos_entry.delete(0, tk.END)
+        self.correct_digits_entry.delete(0, tk.END)
 
-            # Eliminate impossible guesses
-            self.possible_codes = [
-                code for code in self.possible_codes
-                if self.feedback(code) == (correct_place, correct_digit)
-            ]
+        self.current_guess = self.generate_guess()
+        self.display_guess()
+
+def run():
+    root = tk.Toplevel()
+    app = CodeBreakerManualFeedback(root)
+    root.mainloop()
