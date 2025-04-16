@@ -68,7 +68,7 @@ title_frame.pack(pady=30)
 
 title_label = tk.Label(
     title_frame,
-    text="🧠 AI Puzzle Solver",
+    text="AI Puzzle Solver",
     font=("Georgia", 22, "bold")
 )
 title_label.pack()
