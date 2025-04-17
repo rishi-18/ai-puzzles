@@ -11,7 +11,7 @@ class MazeEscapeGame:
         self.root.title("Maze Escape")
 
         self.canvas = tk.Canvas(root, width=CELL_SIZE * GRID_SIZE, height=CELL_SIZE * GRID_SIZE)
-        self.canvas.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+        self.canvas.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
 
         self.maze_grid = []
         self.start = (0, 0)
@@ -20,13 +20,29 @@ class MazeEscapeGame:
         self.canvas.bind("<Button-1>", self.set_start)
         self.canvas.bind("<Button-3>", self.set_goal)
 
-        tk.Button(root, text="Generate Maze", command=self.generate).grid(row=1, column=0, pady=10)
-        tk.Button(root, text="Solve with AI", command=self.solve).grid(row=1, column=1, pady=10)
-        tk.Label(root, text="Left-click: Start | Right-click: Goal", font=("Segoe UI", 9)).grid(row=1, column=2)
+        # Maze shape selector
+        self.shape_var = tk.StringVar(value="rectangular")
+        shape_options = ["rectangular", "spiral", "circular", "radial"]
+        self.shape_menu = tk.OptionMenu(root, self.shape_var, *shape_options)
+        self.shape_menu.grid(row=1, column=0, padx=5, pady=10)
+
+        # Shape name to function name mapping
+        self.shape_map = {
+            "rectangular": "random",
+            "spiral": "spiral",
+            "circular": "circular",
+            "radial": "radial"
+        }
+
+        tk.Button(root, text="Generate Maze", command=self.generate).grid(row=1, column=1, padx=5, pady=10)
+        tk.Button(root, text="Solve with AI", command=self.solve).grid(row=1, column=2, padx=5, pady=10)
+        tk.Label(root, text="Left-click: Start | Right-click: Goal", font=("Segoe UI", 9)).grid(row=1, column=3)
 
     def generate(self):
+        shape_label = self.shape_var.get()
+        shape = self.shape_map.get(shape_label, "random")  # Map to internal maze generator keyword
         while True:
-            self.maze_grid = generate_maze_grid(GRID_SIZE)
+            self.maze_grid = generate_maze_grid(GRID_SIZE, shape)
             if a_star_search(self.maze_grid, self.start, self.goal):
                 break
         draw_maze(self.canvas, self.maze_grid, CELL_SIZE, self.start, self.goal)
@@ -55,6 +71,6 @@ class MazeEscapeGame:
             draw_maze(self.canvas, self.maze_grid, CELL_SIZE, self.start, self.goal)
 
 def run():
-    window = tk.Toplevel()
-    MazeEscapeGame(window)
-    window.mainloop()
+    root = tk.Toplevel()
+    MazeEscapeGame(root)
+    root.mainloop()
