@@ -1,10 +1,10 @@
 import random
-import random
 import math
+from utils.ai_algorithms import a_star_search
 
 def generate_random_maze(grid_size):
     while True:
-        maze = [[1 if random.random() < 0.35 else 0 for _ in range(grid_size)] for _ in range(grid_size)]
+        maze = [[1 if random.random() < 0.5 else 0 for _ in range(grid_size)] for _ in range(grid_size)]
         maze[0][0], maze[grid_size - 1][grid_size - 1] = 0, 0
         if is_path_possible(maze):
             return maze
@@ -35,7 +35,8 @@ def add_spiral_branches(maze):
     grid_size = len(maze)
     for i in range(1, grid_size - 1):
         for j in range(1, grid_size - 1):
-            if maze[i][j] == 1 and random.random() < 0.2:
+            # Increase chance of branches to 0.5 for complexity
+            if maze[i][j] == 1 and random.random() < 0.5:
                 maze[i][j] = 0
 
 def generate_circular_maze(grid_size):
@@ -44,7 +45,8 @@ def generate_circular_maze(grid_size):
     for i in range(grid_size):
         for j in range(grid_size):
             dist = math.sqrt((i - cx) ** 2 + (j - cy) ** 2)
-            if dist < grid_size // 2 and random.random() > 0.3:
+            # Increase wall density by reducing openings
+            if dist < grid_size // 2 and random.random() > 0.5:
                 maze[i][j] = 0
     maze[0][0] = 0
     maze[grid_size - 1][grid_size - 1] = 0
@@ -57,13 +59,14 @@ def generate_radial_maze(grid_size):
         for j in range(grid_size):
             angle = math.atan2(i - cx, j - cy)
             sector = int((angle + math.pi) / (2 * math.pi) * 16)
-            if (sector % 2 == 0 and random.random() > 0.4) or (sector % 2 == 1 and random.random() > 0.8):
+            # Increase walls by adjusting probabilities
+            if (sector % 2 == 0 and random.random() > 0.6) or (sector % 2 == 1 and random.random() > 0.9):
                 maze[i][j] = 0
     maze[0][0] = 0
     maze[grid_size - 1][grid_size - 1] = 0
     return maze
 
-def generate_maze_grid(size, maze_type="random"):
+def generate_maze_grid(size, maze_type="rectangular"):
     if maze_type == "rectangular":
         return generate_random_maze(size)
     elif maze_type == "spiral":
@@ -76,9 +79,7 @@ def generate_maze_grid(size, maze_type="random"):
         raise ValueError(f"Unknown maze type: {maze_type}")
 
 def is_path_possible(maze):
-    from utils.ai_algorithms import a_star_search
     return a_star_search(maze, (0, 0), (len(maze)-1, len(maze)-1)) is not None
-
 
 def draw_maze(canvas, grid, cell_size, start=None, goal=None):
     canvas.delete("all")
@@ -89,7 +90,7 @@ def draw_maze(canvas, grid, cell_size, start=None, goal=None):
                 j * cell_size, i * cell_size,
                 (j + 1) * cell_size, (i + 1) * cell_size,
                 fill=color,
-                outline="gray"  # Add border for visibility
+                outline="gray"
             )
     if start:
         i, j = start
@@ -108,21 +109,6 @@ def draw_maze(canvas, grid, cell_size, start=None, goal=None):
             outline="gray"
         )
 
-    if start:
-        i, j = start
-        canvas.create_rectangle(
-            j * cell_size, i * cell_size,
-            (j + 1) * cell_size, (i + 1) * cell_size,
-            fill="blue"
-        )
-    if goal:
-        i, j = goal
-        canvas.create_rectangle(
-            j * cell_size, i * cell_size,
-            (j + 1) * cell_size, (i + 1) * cell_size,
-            fill="red"
-        )
-
 def animate_path(canvas, path, cell_size, delay=100):
     for i, (x, y) in enumerate(path):
         canvas.after(i * delay, lambda x=x, y=y: canvas.create_rectangle(
@@ -131,3 +117,72 @@ def animate_path(canvas, path, cell_size, delay=100):
             fill="lightgreen"
         ))
 
+CELL_SIZE = 100
+
+import tkinter as tk
+import time
+
+CELL_SIZE = 100
+ANIMATION_DELAY = 0.3  # seconds between steps
+
+class TrafficPuzzleBoard:
+    def __init__(self, parent, board_data):
+        self.parent = parent
+        self.board_data = board_data
+        self.rows = len(board_data)
+        self.cols = len(board_data[0])
+        self.cells = []
+
+    def render_board(self):
+        # Clear previous widgets
+        for widget in self.parent.winfo_children():
+            widget.destroy()
+        self.cells = []
+
+        for r in range(self.rows):
+            row = []
+            for c in range(self.cols):
+                cell_value = self.board_data[r][c]
+                label = tk.Label(self.parent, text=cell_value if cell_value != '.' else '',
+                                 width=2, height=1, font=("Segoe UI", 20),
+                                 borderwidth=2, relief="groove", bg=self.get_color(cell_value))
+                label.grid(row=r, column=c, padx=1, pady=1)
+                row.append(label)
+            self.cells.append(row)
+
+    def get_board(self):
+        return [row[:] for row in self.board_data]
+
+    def update_board(self, new_board):
+        self.board_data = new_board
+        for r in range(self.rows):
+            for c in range(self.cols):
+                value = self.board_data[r][c]
+                label = self.cells[r][c]
+                label.config(text=value if value != '.' else '', bg=self.get_color(value))
+
+    def animate_solution(self, solution_path, animate=True):
+        if animate:
+            for state in solution_path:
+                self.update_board(state)
+                self.parent.update()
+                time.sleep(ANIMATION_DELAY)
+        else:
+            self.update_board(solution_path[-1])
+
+    def get_color(self, value):
+        # Assign a unique color per car, red for 'R', gray for empty
+        if value == '.':
+            return "lightgray"
+        elif value == 'R':
+            return "red"
+        else:
+            color_map = {
+                'A': "#6EC1E4",
+                'B': "#FFD966",
+                'C': "#93C47D",
+                'D': "#D9A7EB",
+                'E': "#FFB6B9",
+                'F': "#B4A7D6",
+            }
+            return color_map.get(value, "white")
